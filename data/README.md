@@ -17,7 +17,7 @@ python src/pipeline.py --sample
 
 - `data/raw/manifest.json` registra el hash y el número de filas de cada fichero descargado.
 - `data/silver/` y `data/gold/` se generan con el script (ignorados por git).
-- `data/sample/gold_sample.csv` es una muestra de hasta 200 filas que sí se versiona.
+- `data/sample/gold_sample.csv` es una muestra de 200 filas que sí se versiona.
 
 ## Citas
 

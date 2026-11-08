@@ -53,7 +53,7 @@ De las tres ideas de la entrega 1 se continúa con la **idea 3**, porque es la �
 - **Minimización:**
   - No se recogen nombres de usuario ni perfiles, porque no son necesarios para responder la pregunta.
   - Si en una fase posterior se usaran reseñas reales de Amazon o Yelp, se descartaría `user_id` o se sustituiría por un hash, y se eliminaría cualquier nombre propio de persona que aparezca en el texto.
-- **Repositorio:** no se suben los datasets completos. Solo se incluyen el script, las instrucciones de descarga (`data/README.md`) y una muestra pequeña de la capa Gold (`data/sample/gold_sample.csv`, hasta 200 filas) con atribución a las fuentes.
+- **Repositorio:** no se suben los datasets completos. Solo se incluyen el script, las instrucciones de descarga (`data/README.md`) y una muestra pequeña de la capa Gold (`data/sample/gold_sample.csv`, 200 filas) con atribución a las fuentes.
 
 ## 4. Del dato bruto al dato utilizable
 
@@ -106,15 +106,46 @@ Archivo `data/gold/reviews_gold.csv`: **una fila es una reseña única, etiqueta
 | `n_chars`, `n_words`, `avg_word_len`, `type_token_ratio` | Longitud y riqueza léxica | Modelo base interpretable |
 | `exclam_ratio`, `upper_ratio`, `first_person_ratio` | Estilo | Hipótesis de la literatura (más primera persona y énfasis en reseñas engañosas) |
 | `positive_word_ratio`, `negative_word_ratio`, `superlative_ratio`, `affect_polarization` | Marcadores léxicos de afecto | Contrastar la hipótesis de la entrega 1 sobre el lenguaje emocional extremo |
-| `split` | `train` / `val` / `test` | En Ott se respetan los folds originales (1–3 train, 4 val, 5 test). En el resto, partición estratificada 70/15/15 con semilla 42. |
+| `split` | `train` / `val` / `test` | Si se usa el zip original de Ott, se respetan sus folds (1–3 train, 4 val, 5 test). Con la versión CSV, o con Salminen, partición estratificada 70/15/15 con semilla 42. |
 
 Los léxicos de afecto del script son listas cortas e interpretables, pensadas como primera aproximación. En la fase de modelado se pueden sustituir por un léxico validado (por ejemplo, NRC Emotion Lexicon o LIWC) sin cambiar el resto del flujo.
 
-**Resultado de la ejecución** (pegar aquí la salida de `python src/pipeline.py` tras descargar los datos):
+### Resultado de la ejecución con datos reales
+
+Ejecución de `python src/pipeline.py --sample` sobre `deceptive-opinion.csv`, la versión CSV de Kaggle del corpus de Ott (SHA-256 `e98f9f94…71e3a77`, registrado en `manifest.json`):
 
 ```
-[pendiente: recuento por capa y tabla source × split × is_fake]
+[bronze] ott: 1,600 filas
+[silver] 1,600 -> 1,596 filas (conflictos de etiqueta eliminados: 0)
+[gold] 1,596 filas, 21 columnas
+is_fake             0    1   All
+source     split
+ott_hotels test   120  120   240
+           train  557  560  1117
+           val    119  120   239
+All               796  800  1596
+[sample] data/sample/gold_sample.csv
 ```
+
+- **Silver** elimina 4 reseñas veraces duplicadas. No hay nulos en el texto ni etiquetas contradictorias. La columna `rating` queda vacía, porque el corpus no trae puntuación.
+- **Gold** tiene 1.596 reseñas de 20 hoteles, con las clases equilibradas (796 veraces y 800 engañosas). La versión CSV no trae los folds originales, así que se aplica la partición estratificada 70/15/15. La columna `hotel` permite repetir la partición agrupando por hotel en la fase de modelado, para comprobar que el modelo generaliza a hoteles que no ha visto.
+- `data/sample/gold_sample.csv` contiene 200 filas (100 por clase).
+
+### Primera comprobación: ¿los datos responden a la pregunta?
+
+Media de algunas señales de la capa Gold por polaridad y clase:
+
+| Señal | Negativas veraces | Negativas engañosas | Positivas veraces | Positivas engañosas |
+|---|---|---|---|---|
+| `n_words` | 178,6 | 177,5 | 123,0 | 115,7 |
+| `first_person_ratio` | 0,054 | **0,070** | 0,048 | **0,066** |
+| `exclam_ratio` | 0,006 | 0,005 | 0,008 | 0,012 |
+| `superlative_ratio` | 0,003 | 0,003 | 0,003 | 0,005 |
+| `affect_polarization` | 0,008 | 0,009 | 0,023 | 0,023 |
+| `type_token_ratio` | 0,677 | 0,663 | 0,726 | 0,709 |
+
+- La etiqueta existe, está equilibrada y hay diferencias medibles entre clases. La más clara es el **mayor uso de la primera persona** en las reseñas engañosas, que coincide con lo que describen Ott et al. (2011).
+- En cambio, con este léxico básico **la polarización afectiva es prácticamente igual** en las dos clases. La hipótesis de la entrega 1 ("el lenguaje emocional extremo delata la reseña falsa") no se confirma con estas señales simples. La fase de modelado la contrastará con un léxico validado y con modelos de texto completos, sin darla por supuesta.
 
 ## 5. Riesgos y limitaciones
 

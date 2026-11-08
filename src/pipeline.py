@@ -213,10 +213,10 @@ def main() -> None:
     g = gold(silver(bronze()))
     if args.sample:
         SAMPLE.mkdir(parents=True, exist_ok=True)
-        n = min(200, len(g))
-        g.groupby(["source", "is_fake"], group_keys=False).apply(
-            lambda x: x.sample(min(len(x), max(1, n // 4)), random_state=SEED)
-        ).to_csv(SAMPLE / "gold_sample.csv", index=False)
+        groups = g.groupby(["source", "is_fake"])
+        per_group = max(1, 200 // groups.ngroups)
+        pd.concat(x.sample(min(len(x), per_group), random_state=SEED) for _, x in groups
+                  ).to_csv(SAMPLE / "gold_sample.csv", index=False)
         print(f"[sample] data/sample/gold_sample.csv")
 
 
